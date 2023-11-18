@@ -355,6 +355,30 @@ public:
         return res;
     }
 };
+/*给你一个整数 x ，如果 x 是一个回文整数，返回 true ；否则，返回 false 。
+
+回文数是指正序（从左向右）和倒序（从右向左）读都是一样的整数。
+
+例如，121 是回文，而 123 不是。
+ */
+bool isPalindrome(int x) {
+    int tmp = x;
+    if(x < 0){
+        return false;
+    }
+    long revers_x = 0;
+    while (x) {
+        auto v = x % 10;
+        if (x) {
+            revers_x +=v;
+        }
+        x /= 10;
+        if (x) {
+            revers_x*=10;
+        }
+    }
+    return (tmp == revers_x);
+}
 
 /*
  * 一个自重复串是一个字符串，其前一半和后一半是一样的，例如 abcdbabcdb （长度一定是偶数）。
@@ -373,6 +397,7 @@ public:
 int main() {
     SolLonggestSubString sls;
     std ::cout << "result:" << sls.longestDupSubstring("faaacabcddcbabcddcbedfgaac") << std::endl;
+    std ::cout << "1234567899 is :" <<  isPalindrome(1234567899) << std::endl;
     return 0;
 }
 
