@@ -394,10 +394,173 @@ bool isPalindrome(int x) {
     测试输入：faaacabcddcbabcddcbedfgaac
  *
  * */
+
+/*
+ * 有两个数据集合如下
+    A {98,38,48,17,21,27,456,9887,100,2358}
+    B {8929,74,1994,12,485,537,183,134,745}
+    题目一
+  1 分别对集合 A B 做排序，排序为从小到大
+  2 把排序后的集合 A B 分别存入到两个链表ListA ListB 中
+  3 把 排序后的ListA 和 排序后的ListB 再合并为一个有序的链表 ListC，输出ListC中所有的数据
+
+
+要求：
+  用C语言，其中排序、链表，不使用函数库
+  输出结果请截图一起发出
+ * */
+void swap(int* a, int* b) {
+    if(*a != *b){
+        *a ^= *b;
+        *b ^= *a;
+        *a ^= *b;
+    }
+}
+
+int partition(int arr[], int low, int high) {
+    int pivot = arr[high];
+    int i = (low - 1);
+    for (int j = low; j <= high - 1; j++) {
+        if (arr[j] < pivot) {
+            i++;
+            swap(&arr[i], &arr[j]);
+        }
+    }
+    swap(&arr[i + 1], &arr[high]);
+    return (i + 1);
+}
+
+void quickSort(int arr[], int low, int high) {
+    if (low < high) {
+        int pi = partition(arr, low, high);
+        quickSort(arr, low, pi - 1);
+        quickSort(arr, pi + 1, high);
+    }
+}
+struct ListNode{
+    int val;
+    ListNode* next;
+};
+ListNode* arr2list(int arr[], int len){
+    ListNode* head = nullptr;
+    ListNode* current = nullptr;
+
+    for(int i = 0; i < len; ++i){
+        if(i == 0){
+            head = new ListNode{arr[i], nullptr};
+            current = head;
+        } else{
+            current->next = new ListNode{arr[i], nullptr};
+            current = current->next;
+        }
+    }
+    return head;
+}
+ListNode* merge_list(ListNode* A, ListNode* B){
+    ListNode head ;
+    ListNode* current = &head;
+    while(A || B){
+        if(A && B){
+            if(A->val <= B->val){
+                current->next = new ListNode{A->val, nullptr};
+                current = current->next;
+                A = A->next;
+            } else{
+                current->next = new ListNode{B->val, nullptr};
+                current = current->next;
+                B = B->next;
+            }
+        } else if (A && (B == nullptr)) {
+            current->next = new ListNode{A->val, nullptr};
+            current = current->next;
+            A = A->next;
+        } else{
+            current->next = new ListNode{B->val, nullptr};
+            current = current->next;
+            B = B->next;
+        }
+    }
+    return head.next;
+}
+void test_1(){
+    int arr1[] = {98,38,48,17,21,27,456,9887,100,2358};
+    int arr2[] = {8929,74,1994,12,485,537,183,134,745};
+    int arr1_len = sizeof(arr1)/4 ;
+    int arr2_len = sizeof(arr2)/4 ;
+    quickSort(arr1,0, arr1_len-1);
+    quickSort(arr2,0, arr2_len-1);
+
+    ListNode* listA = arr2list(arr1,arr1_len);
+    ListNode* listB = arr2list(arr2,arr2_len);
+    ListNode* ListC = merge_list(listA,listB);
+    ListNode *current = ListC;
+    while (current) {
+        printf("%d ", current->val);
+        current = current->next;
+    }
+}
+
+/*
+ *题目二  双链表 实现增 删 功能
+
+A {98,38,48,16,20,27,456,9887,100,2358}
+
+添加到双链表 成功后 再删除 节点9887
+
+要求：
+  用C语言，其中排序、链表，不使用函数库
+  输出结果请截图一起发出
+ * */
+struct ListNodeD{
+    int val;
+    ListNodeD* pre = nullptr;
+    ListNodeD* next = nullptr;
+};
+ListNodeD* append(ListNodeD*tail, int val){
+    tail->next = new ListNodeD{val, tail, nullptr};
+    return tail->next;
+}
+ListNodeD* init(){
+
+    int arr[] = {98, 38, 48, 16, 20, 27, 456, 9887, 100, 2358};
+    int len = sizeof(arr) / 4;
+
+    ListNodeD head ;
+    ListNodeD* current = &head;
+    for (int i = 0; i < len; ++i) {
+        current->next = new ListNodeD{arr[i], current,nullptr};
+        current = current->next;
+    }
+    return head.next;
+}
+void remove(ListNodeD*head, int val){
+    while(head){
+        if(head->val == val){
+            head->pre->next = head->next;
+            head->next->pre = head->pre;
+            return;
+        } else{
+            head = head->next;
+        }
+    }
+}
+
+void print(ListNodeD *head) {
+    while (head) {
+        printf("%d ", head->val);
+        head = head->next;
+    }
+    printf("\n");
+}
+void test_2(){
+    ListNodeD* list = init();
+    print(list);
+    remove(list,9887);
+    print(list);
+}
+
+
 int main() {
-    SolLonggestSubString sls;
-    std ::cout << "result:" << sls.longestDupSubstring("faaacabcddcbabcddcbedfgaac") << std::endl;
-    std ::cout << "1234567899 is :" <<  isPalindrome(1234567899) << std::endl;
     return 0;
 }
 
