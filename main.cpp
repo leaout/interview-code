@@ -559,6 +559,196 @@ void test_2(){
     print(list);
 }
 
+/*
+ * 现有一个邮件处理中心（Center）负责接收各地发来的邮件（Mail）并进行转发。
+Mail和Center的伪代码定义如下：
+class Mail {
+Public:
+String Sender;           //邮件的发件人（一个发件人可以发送多封邮件）
+String Receiver;        //邮件的收件人
+String Content;        //邮件的内容
+}
+class Center{
+......
+Public:
+void Handle(Mail mail） //当有邮件到达时，系统会调用该方法将邮件交给Center转发。
+Private:
+void send(Mail mail)     //对一封邮件进行转发
+......
+}
+已知有以下条件：
+1.	邮件的转发过程（send）由于要进行网络传输是一个相对耗时的过程。
+2.	对于同一个发件人的邮件，Center要严格按照邮件到达的顺序进行转发，即先进先出。不同发件人的邮件之间不需要保证先进先出。
+3.	邮件的使用人数众多，达到数亿级别
+
+请结合真实场景，使用并发编程的方式（如线程池）实现一个满足以上条件的Center，使得接收到的每封邮件能尽快转发出去。send方法不需要实现。可使用伪代码。
+
+ * */
+#include <condition_variable>
+class Mail {
+public:
+    string Sender;           //邮件的发件人（一个发件人可以发送多封邮件）
+    string Receiver;        //邮件的收件人
+    string Content;        //邮件的内容
+};
+
+struct Cond {
+    mutex mtx;
+    condition_variable cv;
+    bool ready = false;
+};
+
+class Center {
+    vector<pair<Cond, list<Mail>>> m_threadData;
+    unsigned int m_round = 0;
+    int m_thread_num = 0;
+public:
+    Center(int pow) {
+        m_thread_num = 1 << pow;
+
+        m_threadData.resize(m_thread_num);
+        for (int i = 0; i < m_thread_num; ++i) {
+            thread th(&Center::thread_fun,this, std::ref(i));
+            th.detach();
+        }
+    }
+
+    void Handle(Mail &mail) {
+        auto &th_data = m_threadData[m_round++ & m_thread_num];
+        std::lock_guard lk(th_data.first.mtx);
+        th_data.second.push_front(mail);
+        th_data.first.ready = true;
+        th_data.first.cv.notify_one();
+    }
+
+    void thread_fun(int i) {
+        auto &th_data = m_threadData[i];
+        while (1) {
+            std::unique_lock lk(th_data.first.mtx);
+            th_data.first.cv.wait(lk, [&] { return th_data.first.ready; });
+            send(&(th_data.second.back()));
+            th_data.second.pop_back();
+        }
+    }
+
+private:
+    void send(Mail *mail);
+
+};
+/*
+ * 现有一个名为Data的类，每个Data类的对象代表一条数据记录，Data类的伪代码定义如下：
+class Data {
+Public:
+String ID;                    //数据的唯一标识ID
+String Content;         //存放数据内容
+}
+另有一个名为Cache的类，其作用是专门用于保存和查询Data类的对象。Cache类具有两个接口供外部调用：Add和 Get，其伪代码定义如下：
+Class Cache {
+......
+Public:
+void Add(Data data)；//向Cache内添加一个Data
+Data Get(String ID);  //从Cache中查找指定ID的Data，返回该Data。没有则返回NULL
+......
+}
+Cache类需要满足以下条件：
+1.	Cache中最多只能保存N个Data，当Data数量将要超过N时需要选择一些Data将其删除。
+2.	Cache删除Data时总是优先选择最长时间没有被访问过的Data，即越长时间没有被访问过的Data越容易被删除（针对某个Data使用Add()或Get()都视为访问过该Data）。
+3.	Add()接口的时间复杂度要<O(log(n))；Get()接口的时间复杂度要<O(log(n))。
+
+请实现一个满足以上条件的Cache，不需要考虑并发控制。可以使用常用的基础数据结构（如数组、链表、队列、堆、栈、哈希表、字典、树等），但不能直接使用现成的具有Cache相似功能的库。
+ * */
+using namespace std;
+
+class Data {
+public:
+    string ID;           //数据的唯一标识ID
+    string Content;         //存放数据内容
+};
+
+class Cache {
+    list<Data> m_dataList;
+    unordered_map<string,list<Data>::iterator > m_search;
+    int m_maxSize = 100;
+public:
+    explicit Cache(int max_size):m_maxSize(max_size){}
+
+    void Add(Data data){
+        auto ret = m_search.find(data.ID);
+        if(ret != m_search.end()){
+            refresh(ret->second);
+            return;
+        }
+        m_dataList.push_front(data);
+        m_search[data.ID] = m_dataList.begin();
+
+        if(m_dataList.size() > m_maxSize){
+            m_dataList.pop_back();
+        }
+    }
+    void refresh(list<Data>::iterator iter) {
+        m_dataList.push_front(*iter);
+        m_dataList.erase(iter);
+    }
+    Data *Get(string ID){
+        auto ret = m_search.find(ID);
+        if(ret == m_search.end()){
+            return nullptr;
+        }
+        //
+        refresh(ret->second);
+        return &(*ret->second);
+    }
+
+};
+/*
+ * 任意给定一个模式字符串Pattern，和一个字符串Str，返回Str中被Pattern匹配的部分，如果不能成功匹配返回空字符串“”。其中Str由字母、数字或者“_”所组成。Pattern由字母、数字、“_“和“*”组成，其中“*”可以匹配任意长度的字母、数字或者“_” 字符串（包括空字符串）。Pattern中可以包括0个或者多个“*”。
+
+要求：
+1.	提示：下述是合法的输入和满足要求的输出的例子
+Str = ”sample_L001_x_v1“, Pattern=”L001”，返回值：L001
+Str = ”sample_L001_x8_v1“, Pattern=”L*_x*_”，返回值：L001_x8_
+Str = ”sample_L001_x8_v1“, Pattern=”L*_x*”，返回值：L001_x8_v1
+Str = ”sample_L001_x8_v1“, Pattern=”L*_u*”，返回值：“”
+1.	不限制编程语言，可以自由使用C++，C，Java或者Go的数据结构（例如链表，数组，映射等）。
+2.	可以使用特定语言的基本接口如SubString，FindString等。但不能使用任何其它可进行类似“*”通配符匹配的接口直接得到结果。
+
+ * */
+class SolPattern {
+public:
+    bool isMatch(string s, string p) {
+        int m = s.size();
+        int n = p.size();
+
+        auto matches = [&](int i, int j) {
+            if (i == 0) {
+                return false;
+            }
+            if (p[j - 1] == '_') {
+                return true;
+            }
+            return s[i - 1] == p[j - 1];
+        };
+
+        vector<vector<int>> f(m + 1, vector<int>(n + 1));
+        f[0][0] = true;
+        for (int i = 0; i <= m; ++i) {
+            for (int j = 1; j <= n; ++j) {
+                if (p[j - 1] == '*') {
+                    f[i][j] |= f[i][j - 2];
+                    if (matches(i, j - 1)) {
+                        f[i][j] |= f[i - 1][j];
+                    }
+                }
+                else {
+                    if (matches(i, j)) {
+                        f[i][j] |= f[i - 1][j - 1];
+                    }
+                }
+            }
+        }
+        return f[m][n];
+    }
+};
 
 int main() {
     return 0;
