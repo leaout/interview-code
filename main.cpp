@@ -593,9 +593,11 @@ public:
 };
 
 struct Cond {
-    mutex mtx;
-    condition_variable cv;
+    std::mutex mtx;
+    std::condition_variable cv;
     bool ready = false;
+
+    Cond() = default; // 添加默认构造函数
 };
 
 class Center {
@@ -606,7 +608,7 @@ public:
     Center(int pow) {
         m_thread_num = 1 << pow;
 
-        m_threadData.resize(m_thread_num);
+        // m_threadData.resize(m_thread_num);
         for (int i = 0; i < m_thread_num; ++i) {
             thread th(&Center::thread_fun,this, std::ref(i));
             th.detach();
@@ -750,7 +752,46 @@ public:
     }
 };
 
+//实现kmp字符串匹配 func
+int kmp(string str, string pattern) {
+    int n = str.size();
+    int m = pattern.size();
+    if (m == 0) {
+        return 0;
+    }
+    vector<int> next(m);
+    next[0] = -1;
+    int k = -1;
+    for (int i = 1; i < m; i++) {
+        while (k != -1 && pattern[k + 1] != pattern[i]) {
+            k = next[k];
+        }
+        if (pattern[k + 1] == pattern[i]) {
+            k++;
+        }
+        next[i] = k;
+        k = -1; //重置k
+    }
+    for (int i = 0, j = -1; i < n; i++) {
+        while (j != -1 && pattern[j + 1] != str[i]) {
+            j = next[j];
+        }
+        if (pattern[j + 1] == str[i]) {
+            j++;
+        }
+        if (j == m - 1) {
+            return i - m + 1;
+        }
+
+    }
+    return -1;
+}
+
+
 int main() {
+    string pattern = "ababcababcababc";
+    string s = "ababcababdababcababcababcababc";
+    std ::cout << ((kmp(s,pattern) > 0) ? "true":"false") << std::endl;
     return 0;
 }
 
